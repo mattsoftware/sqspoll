@@ -20,6 +20,9 @@ for x in "$@"; do
         --timeout=*)
             TIMEOUT=$(echo $x | cut -d= -f2)
             ;;
+        --region=*)
+            AWS_REGION=$(echo $x | cut -d= -f2)
+            ;;
         --queue=*)
             QUEUE_URL=$(echo $x | cut -d= -f2)
             ;;
@@ -31,6 +34,7 @@ for x in "$@"; do
             ;;
     esac
 done
+: ${AWS_REGION:?"You must provide the AWS region with --region"}
 : ${QUEUE_URL:?"You must provide a queue url with --queue"}
 : ${RUN_CMD:?"You must provide a run command with --run"}
 : ${VERBOSE:="0"}
@@ -52,7 +56,7 @@ log "Queue: $QUEUE_URL"
 log "Timeout = $TIMEOUT"
 while (true); do
     logerr -n .
-    MESSAGES=$(aws sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 1)
+    MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 1)
     if [[ "$MESSAGES" != "" ]]; then
         MESSAGE=$(echo $MESSAGES | jq '.Messages[]' -r)
         RECEIPT=$(echo $MESSAGE | jq '.ReceiptHandle' -r)
@@ -64,7 +68,7 @@ while (true); do
         (echo "$BODY" | $RUN_CMD) > /dev/null 2>&1
         SUCCESS=$?
         if [ "$SUCCESS" == "0" ]; then
-            aws sqs delete-message --queue-url "$QUEUE_URL" --receipt-handle "$RECEIPT"
+            aws --region "$AWS_REGION" sqs delete-message --queue-url "$QUEUE_URL" --receipt-handle "$RECEIPT"
             logerr -n √
         else
             logerr -n X
