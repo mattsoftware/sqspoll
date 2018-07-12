@@ -12,6 +12,7 @@ for x in "$@"; do
             echo "   --queue=   sets the queue url"
             echo "   --run=     the command to run (the body of the sqs message will be sent to stdin of this command)"
             echo "   --count=   exit after x number of messages"
+            echo "   --region=  specify the aws region for the queue url"
             exit
             ;;
         -v)
