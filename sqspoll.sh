@@ -12,6 +12,7 @@ for x in "$@"; do
             echo "   --queue=   sets the queue url"
             echo "   --run=     the command to run (the body of the sqs message will be sent to stdin of this command)"
             echo "   --count=   exit after x number of messages"
+            echo "   --loop=    exit after x number of timeouts"
             echo "   --region=  specify the aws region for the queue url"
             exit
             ;;
@@ -33,6 +34,9 @@ for x in "$@"; do
         --count=*)
             COUNT=$(echo $x | cut -d= -f2)
             ;;
+        --loop=*)
+            LOOP=$(echo $x | cut -d= -f2)
+            ;;
     esac
 done
 : ${AWS_REGION:?"You must provide the AWS region with --region"}
@@ -41,6 +45,7 @@ done
 : ${VERBOSE:="0"}
 : ${TIMEOUT:="10"}
 : ${COUNT:=""}
+: ${LOOP:=""}
 
 function log () {
     [[ $VERBOSE == 1 ]] && logerr $@
@@ -79,6 +84,11 @@ while (true); do
             log "Count: $COUNT"
             [[ $COUNT < 1 ]] && exit
         fi
+    fi
+    if [[ $LOOP != "" ]]; then
+        let LOOP--
+        log "Loop: $LOOP"
+        [[ $LOOP < 1 ]] && exit
     fi
 done
 
