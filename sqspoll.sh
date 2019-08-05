@@ -82,13 +82,13 @@ while (true); do
         if [[ $COUNT != "" ]]; then
             let COUNT--
             log "Count: $COUNT"
-            [[ $COUNT < 1 ]] && exit
+            (( $COUNT < 1 )) && exit
         fi
     fi
     if [[ $LOOP != "" ]]; then
         let LOOP--
         log "Loop: $LOOP"
-        [[ $LOOP < 1 ]] && exit
+        (( $LOOP < 1 )) && exit
     fi
 done
 
