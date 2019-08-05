@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# I took this script directly from https://github.com/mattsoftware/sqspoll (MIT license)
-# it just happened to do exactly what we needed. we're running it as:
-# ./sqspoll.sh --region=us-west-1 --queue=https://sqs.us-west-1.amazonaws.com/167445256927/pgmt-up-west --run=./processqs.sh
-#
-# I could probably speed this up quite a bit by making it process many messages at once instead of 1, but it does not seem to be necessary
 
 set -e
 
