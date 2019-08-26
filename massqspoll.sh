@@ -2,19 +2,26 @@
 
 set -e
 
+help(){
+ cat << EOF
+ Usage:
+ $0 <options>
+    -h         this help message
+    -v         verbose output
+    --timeout= sets the timeout to wait for new messages
+    --queue=   sets the queue url
+    --run=     the command to run (the body of the sqs message will be sent to stdin of this command)
+    --count=   exit after x number of messages
+    --loop=    exit after x number of timeouts
+    --region=  specify the aws region for the queue url
+    --msgs=    number of msgs to poll per request
+EOF
+}
+
 for x in "$@"; do
     case $x in
         --help|-h|help)
-            echo "Usage:"
-            echo "$0 <options>"
-            echo "   -h         this help message"
-            echo "   -v         verbose output"
-            echo "   --timeout= sets the timeout to wait for new messages"
-            echo "   --queue=   sets the queue url"
-            echo "   --run=     the command to run (the body of the sqs message will be sent to stdin of this command)"
-            echo "   --count=   exit after x number of messages"
-            echo "   --loop=    exit after x number of timeouts"
-            echo "   --region=  specify the aws region for the queue url"
+            help
             exit
             ;;
         -v)
@@ -38,6 +45,9 @@ for x in "$@"; do
         --loop=*)
             LOOP=$(echo $x | cut -d= -f2)
             ;;
+        --msgs=*)
+            MSGS=$(echo $x | cut -d= -f2)
+            ;;
     esac
 done
 : ${AWS_REGION:?"You must provide the AWS region with --region"}
@@ -47,6 +57,7 @@ done
 : ${TIMEOUT:="10"}
 : ${COUNT:=""}
 : ${LOOP:=""}
+: ${MSGS:="10"}
 
 function log () {
     [[ $VERBOSE == 1 ]] && logerr $@
@@ -62,7 +73,7 @@ set +e
 log "Queue: $QUEUE_URL"
 log "Timeout = $TIMEOUT"
 while :; do
- MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 10)
+ MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages $MSGS)
  if [[ "$MESSAGES" != "" ]]; then
   if [[ $COUNT != "" ]]; then
    let COUNT--
@@ -98,4 +109,3 @@ while :; do
   (( $LOOP < 1 )) && exit
  fi
 done
-
