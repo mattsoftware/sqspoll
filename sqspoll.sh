@@ -19,6 +19,9 @@ for x in "$@"; do
         -v)
             VERBOSE=1
             ;;
+        -d)
+            DEBUG=1
+            ;;
         --timeout=*)
             TIMEOUT=$(echo $x | cut -d= -f2)
             ;;
@@ -43,17 +46,21 @@ done
 : ${QUEUE_URL:?"You must provide a queue url with --queue"}
 : ${RUN_CMD:?"You must provide a run command with --run"}
 : ${VERBOSE:="0"}
+: ${DEBUG:="0"}
 : ${TIMEOUT:="10"}
 : ${COUNT:=""}
 : ${LOOP:=""}
 
 function log () {
-    [[ $VERBOSE == 1 ]] && logerr $@
+    [[ $VERBOSE == 1 ]] && logerr "$@"
     return 0
 }
 function logerr () {
-    (>&2 echo $@)
+    (>&2 echo "$@")
     return 0
+}
+function debug() {
+    [[ $DEBUG == 1 ]] && logerr "$@"
 }
 
 set +e
@@ -63,6 +70,7 @@ log "Timeout = $TIMEOUT"
 while (true); do
     logerr -n .
     MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 1)
+    debug "$MESSAGES"
     if [[ "$MESSAGES" != "" ]]; then
         MESSAGE=$(echo $MESSAGES | jq '.Messages[]' -r)
         RECEIPT=$(echo $MESSAGE | jq '.ReceiptHandle' -r)
