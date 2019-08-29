@@ -67,26 +67,34 @@ set +e
 
 log "Queue: $QUEUE_URL"
 log "Timeout = $TIMEOUT"
+
+function handleMessage () {
+    local MESSAGE="$1"; shift
+
+    RECEIPT=$(echo $MESSAGE | jq '.ReceiptHandle' -r)
+    BODY=$(echo $MESSAGE | jq '.Body' -r)
+    log
+    log "Receipt: $RECEIPT"
+    log "Got Message:"
+    log "$BODY"
+    (echo "$BODY" | $RUN_CMD) > /dev/null 2>&1
+    SUCCESS=$?
+    if [ "$SUCCESS" == "0" ]; then
+        aws --region "$AWS_REGION" sqs delete-message --queue-url "$QUEUE_URL" --receipt-handle "$RECEIPT"
+        logerr -n √
+    else
+        logerr -n X
+    fi
+}
+
 while (true); do
     logerr -n .
     MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 1)
     debug "$MESSAGES"
     if [[ "$MESSAGES" != "" ]]; then
-        MESSAGE=$(echo $MESSAGES | jq '.Messages[]' -r)
-        RECEIPT=$(echo $MESSAGE | jq '.ReceiptHandle' -r)
-        BODY=$(echo $MESSAGE | jq '.Body' -r)
-        log
-        log "Receipt: $RECEIPT"
-        log "Got Message:"
-        log "$BODY"
-        (echo "$BODY" | $RUN_CMD) > /dev/null 2>&1
-        SUCCESS=$?
-        if [ "$SUCCESS" == "0" ]; then
-            aws --region "$AWS_REGION" sqs delete-message --queue-url "$QUEUE_URL" --receipt-handle "$RECEIPT"
-            logerr -n √
-        else
-            logerr -n X
-        fi
+        MESSAGE=$(echo $MESSAGES | jq '.Messages[0]' -r)
+        debug "$MESSAGE"
+        handleMessage "$MESSAGE"
         if [[ $COUNT != "" ]]; then
             let COUNT--
             log "Count: $COUNT"
