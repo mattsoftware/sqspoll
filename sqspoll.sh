@@ -40,6 +40,9 @@ for x in "$@"; do
         --loop=*)
             LOOP=$(echo $x | cut -d= -f2)
             ;;
+        --max_msg=*)
+            MAX_MSG=$(echo $x | cut -d= -f2)
+            ;;
     esac
 done
 : ${AWS_REGION:?"You must provide the AWS region with --region"}
@@ -50,6 +53,7 @@ done
 : ${TIMEOUT:="10"}
 : ${COUNT:=""}
 : ${LOOP:=""}
+: ${MAX_MSG:="1"}
 
 function log () {
     [[ $VERBOSE == 1 ]] && logerr "$@"
@@ -89,17 +93,21 @@ function handleMessage () {
 
 while (true); do
     logerr -n .
-    MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages 1)
+    MESSAGES=$(aws --region "$AWS_REGION" sqs receive-message --queue-url "$QUEUE_URL" --wait-time-seconds "$TIMEOUT" --max-number-of-messages "$MAX_MSG")
     debug "$MESSAGES"
     if [[ "$MESSAGES" != "" ]]; then
-        MESSAGE=$(echo $MESSAGES | jq '.Messages[0]' -r)
-        debug "$MESSAGE"
-        handleMessage "$MESSAGE"
-        if [[ $COUNT != "" ]]; then
-            let COUNT--
-            log "Count: $COUNT"
-            (( $COUNT < 1 )) && exit
-        fi
+        NUM_MESSAGES=$(echo $MESSAGES | jq '.Messages|length')
+        debug "Found $NUM_MESSAGES messages in payload"
+        for m in $(seq 0 $(( $NUM_MESSAGES - 1 ))); do
+            MESSAGE=$(echo $MESSAGES | jq '.Messages['$m']' -r)
+            debug "$MESSAGE"
+            handleMessage "$MESSAGE"
+            if [[ $COUNT != "" ]]; then
+                let COUNT--
+                log "Count: $COUNT"
+                (( $COUNT < 1 )) && exit
+            fi
+        done
     fi
     if [[ $LOOP != "" ]]; then
         let LOOP--
